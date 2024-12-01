@@ -23,6 +23,8 @@ default = ["std", "string"]
 std = []
 string = []
 
+core_error = [] # MSRV 1.81.0: support `core::error::Error`
+
 [dev-dependencies]
 anyhow = "1.0.69"
 regex-test = { path = "../regex-test", version = "0.1.0" }

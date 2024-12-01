@@ -21,6 +21,9 @@ impl Error {
 #[cfg(feature = "std")]
 impl std::error::Error for Error {}
 
+#[cfg(all(not(feature = "std"), feature = "core_error"))]
+impl core::error::Error for Error {}
+
 impl core::fmt::Display for Error {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         write!(f, "{}", self.msg)
