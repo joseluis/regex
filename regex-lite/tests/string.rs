@@ -61,8 +61,16 @@ fn compiler(
     };
     let re = RegexBuilder::new(pattern)
         .case_insensitive(test.case_insensitive())
-        .build()?;
-    Ok(CompiledRegex::compiled(move |test| run_test(&re, test)))
+        .build();
+    match re {
+        Ok(re) => Ok(CompiledRegex::compiled(move |test| run_test(&re, test))),
+        Err(e) => {
+            #[cfg(feature = "std")]
+            return Err(e.into());
+            #[cfg(not(feature = "std"))]
+            return Err(anyhow::Error::msg(format!("{}", e)));
+        }
+    }
 }
 
 /// Whether we should skip the given test or not. If not, return the single

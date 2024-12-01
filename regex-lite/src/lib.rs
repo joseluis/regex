@@ -859,9 +859,6 @@ increase them as needed.
 // which is super annoying.
 #![cfg_attr(not(feature = "string"), allow(dead_code))]
 
-#[cfg(not(feature = "std"))]
-compile_error!("'std' is currently a required feature, please file an issue");
-
 #[cfg(not(any(target_pointer_width = "32", target_pointer_width = "64")))]
 compile_error!("not supported on non-{32,64}, please file an issue");
 

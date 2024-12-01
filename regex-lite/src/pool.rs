@@ -10,7 +10,39 @@ use crate::pikevm;
 // spin-lock based Mutex. That's questionable on its own, but it's not clear if
 // we should be doing that here. It will require introducing non-safe code in a
 // crate that is otherwise safe. But maybe it's worth doing?
+#[cfg(feature = "std")]
 use std::sync::Mutex;
+
+#[cfg(not(feature = "std"))]
+use no_std_mutex::Mutex;
+#[cfg(not(feature = "std"))]
+mod no_std_mutex {
+    use core::cell::{BorrowMutError, RefCell, RefMut};
+
+    /// A `no_std`-compatible fake `Mutex` using `RefCell`.
+    #[derive(Debug, Default)]
+    pub struct Mutex<T> {
+        inner: RefCell<T>,
+    }
+
+    impl<T> Mutex<T> {
+        /// Creates a new `Mutex` wrapping the given value.
+        pub const fn new(value: T) -> Self {
+            Self { inner: RefCell::new(value) }
+        }
+
+        /// Locks the `Mutex` and provides mutable access to the contained value.
+        pub fn lock(&self) -> Result<RefMut<'_, T>, BorrowMutError> {
+            self.inner.try_borrow_mut()
+        }
+    }
+
+    impl<T> From<T> for Mutex<T> {
+        fn from(value: T) -> Self {
+            Mutex::new(value)
+        }
+    }
+}
 
 /// A type alias for our pool of meta::Cache that fixes the type parameters to
 /// what we use for the meta regex below.

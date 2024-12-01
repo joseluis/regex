@@ -1401,7 +1401,7 @@ impl Regex {
     /// assert_eq!(None, len("(b)*")?);
     /// assert_eq!(Some(2), len("(b)+")?);
     ///
-    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// # Ok::<(), regex_lite::Error>(())
     /// ```
     #[inline]
     pub fn static_captures_len(&self) -> Option<usize> {
@@ -1573,7 +1573,7 @@ impl<'h> Match<'h> {
 }
 
 impl<'h> core::fmt::Debug for Match<'h> {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("Match")
             .field("start", &self.start)
             .field("end", &self.end)
