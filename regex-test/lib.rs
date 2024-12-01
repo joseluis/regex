@@ -93,21 +93,28 @@ See [`MatchKind`] for more details. This is an optional field and defaults to
 
 #![deny(missing_docs)]
 
-/// For convenience, `anyhow::Error` is used to represents errors in this
-/// crate.
+/// For convenience, `anyhow::Error` is used to represents errors in this crate.
 ///
 /// For this reason, `anyhow` is a public dependency and is re-exported here.
 pub extern crate anyhow;
 
-use std::{borrow::Borrow, collections::HashSet, fs, path::Path};
+pub extern crate alloc;
 
+use core::borrow::Borrow;
 use {
     anyhow::{bail, Context, Result},
     bstr::{BString, ByteSlice, ByteVec},
     serde::Deserialize,
 };
 
+#[cfg(feature = "std")]
+use std::{collections::HashSet as AllocSet, fs, path::Path};
+
+#[cfg(not(feature = "std"))]
+use alloc::collections::BTreeSet as AllocSet;
+#[cfg(feature = "std")]
 const ENV_REGEX_TEST: &str = "REGEX_TEST";
+#[cfg(feature = "std")]
 const ENV_REGEX_TEST_VERBOSE: &str = "REGEX_TEST_VERBOSE";
 
 /// A collection of regex tests.
@@ -117,18 +124,19 @@ pub struct RegexTests {
     #[serde(default, rename = "test")]
     tests: Vec<RegexTest>,
     #[serde(skip)]
-    seen: HashSet<String>,
+    seen: AllocSet<String>,
 }
 
 impl RegexTests {
     /// Create a new empty collection of glob tests.
     pub fn new() -> RegexTests {
-        RegexTests { tests: vec![], seen: HashSet::new() }
+        RegexTests { tests: vec![], seen: AllocSet::new() }
     }
 
     /// Loads all of the tests in the given TOML file. The group name assigned
     /// to each test is the stem of the file name. For example, if one loads
     /// `foo/bar.toml`, then the group name for each test will be `bar`.
+    #[cfg(feature = "std")]
     pub fn load<P: AsRef<Path>>(&mut self, path: P) -> Result<()> {
         let path = path.as_ref();
         let data = fs::read(path)
@@ -150,7 +158,7 @@ impl RegexTests {
     /// Load all of the TOML encoded tests in `data` into this collection.
     /// The given group name is assigned to all loaded tests.
     pub fn load_slice(&mut self, group_name: &str, data: &[u8]) -> Result<()> {
-        let data = std::str::from_utf8(&data).with_context(|| {
+        let data = core::str::from_utf8(&data).with_context(|| {
             format!("data in {} is not valid UTF-8", group_name)
         })?;
         let mut index = 1;
@@ -405,7 +413,7 @@ impl RegexTest {
     /// The slice is empty if no match is expected to occur. The IDs returned
     /// are deduplicated and sorted in ascending order.
     fn which_matches(&self) -> Vec<usize> {
-        let mut seen = HashSet::new();
+        let mut seen = AllocSet::new();
         let mut ids = vec![];
         for cap in self.matches.iter() {
             if !seen.contains(&cap.id) {
@@ -471,8 +479,8 @@ impl CompiledRegex {
     }
 }
 
-impl std::fmt::Debug for CompiledRegex {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+impl core::fmt::Debug for CompiledRegex {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         let status = match self.matcher {
             None => "Skip",
             Some(_) => "Run(...)",
@@ -623,11 +631,13 @@ impl TestRunner {
     /// environment variable, which may be set to include or exclude tests.
     /// See the docs on `TestRunner` for its format.
     pub fn new() -> Result<TestRunner> {
+        #[allow(unused_mut)] // used in std
         let mut runner = TestRunner {
             include: vec![],
             results: RegexTestResults::new(),
             expanders: vec![],
         };
+        #[cfg(feature = "std")]
         for mut substring in read_env(ENV_REGEX_TEST)?.split(",") {
             substring = substring.trim();
             if substring.is_empty() {
@@ -938,8 +948,8 @@ struct Expander {
     additional_names: Vec<String>,
 }
 
-impl std::fmt::Debug for Expander {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+impl core::fmt::Debug for Expander {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("Expander")
             .field("predicate", &"<FnMut(..)>")
             .field("additional_names", &self.additional_names)
@@ -959,6 +969,7 @@ struct RegexTestResults {
 /// A test that passed or skipped, along with its specific result.
 #[derive(Debug)]
 struct RegexTestResult {
+    #[allow(dead_code)] // #[cfg(feature = "std")]
     test: RegexTest,
 }
 
@@ -1021,6 +1032,7 @@ impl RegexTestResults {
     }
 
     fn assert(&self) {
+        #[cfg(feature = "std")]
         if read_env(ENV_REGEX_TEST_VERBOSE).map_or(false, |s| s == "1") {
             self.verbose();
         }
@@ -1045,6 +1057,7 @@ impl RegexTestResults {
         )
     }
 
+    #[cfg(feature = "std")]
     fn verbose(&self) {
         println!("{}", "~".repeat(79));
         for t in &self.skip {
@@ -1067,6 +1080,7 @@ impl RegexTestResults {
 }
 
 impl RegexTestResult {
+    #[allow(dead_code)] // #[cfg(feature = "std")]
     fn full_name(&self) -> String {
         self.test.full_name().to_string()
     }
@@ -1078,8 +1092,8 @@ impl RegexTestFailure {
     }
 }
 
-impl std::fmt::Display for RegexTestFailure {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+impl core::fmt::Display for RegexTestFailure {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         write!(
             f,
             "{}: {}\n\
@@ -1095,8 +1109,8 @@ impl std::fmt::Display for RegexTestFailure {
 }
 
 impl RegexTestFailureKind {
-    fn fmt(&self, test: &RegexTest) -> Result<String, std::fmt::Error> {
-        use std::fmt::Write;
+    fn fmt(&self, test: &RegexTest) -> Result<String, core::fmt::Error> {
+        use core::fmt::Write;
 
         let mut buf = String::new();
         match *self {
@@ -1157,7 +1171,7 @@ impl RegexTestFailureKind {
 ///
 /// This iterator is created by the [`RegexTests::iter`] method.
 #[derive(Debug)]
-pub struct RegexTestsIter<'a>(std::slice::Iter<'a, RegexTest>);
+pub struct RegexTestsIter<'a>(core::slice::Iter<'a, RegexTest>);
 
 impl<'a> Iterator for RegexTestsIter<'a> {
     type Item = &'a RegexTest;
@@ -1178,7 +1192,7 @@ enum RegexesFormat {
 impl RegexesFormat {
     fn patterns(&self) -> &[String] {
         match *self {
-            RegexesFormat::Single(ref pat) => std::slice::from_ref(pat),
+            RegexesFormat::Single(ref pat) => core::slice::from_ref(pat),
             RegexesFormat::Many(ref pats) => pats,
         }
     }
@@ -1341,8 +1355,8 @@ pub struct Match {
     pub span: Span,
 }
 
-impl std::fmt::Debug for Match {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+impl core::fmt::Debug for Match {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         write!(f, "Match({:?}: {:?})", self.id, self.span)
     }
 }
@@ -1359,8 +1373,8 @@ pub struct Span {
     pub end: usize,
 }
 
-impl std::fmt::Debug for Span {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+impl core::fmt::Debug for Span {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         write!(f, "{:?}..{:?}", self.start, self.end)
     }
 }
@@ -1452,6 +1466,7 @@ impl Default for SearchKind {
 /// Read the environment variable given. If it doesn't exist, then return an
 /// empty string. Otherwise, check that it is valid UTF-8. If it isn't, return
 /// a useful error message.
+#[cfg(feature = "std")]
 fn read_env(var: &str) -> Result<String> {
     let val = match std::env::var_os(var) {
         None => return Ok("".to_string()),
@@ -1473,23 +1488,32 @@ fn read_env(var: &str) -> Result<String> {
 ///
 /// This is useful for use inside the test runner such that bugs for certain
 /// tests don't prevent other tests from running.
+///
+/// Note: Without the `std` feature, it fallbacks to run the closure directly.
 fn safe<T, F>(fun: F) -> Result<T, String>
 where
     F: FnOnce() -> T,
 {
-    use std::panic;
-
-    panic::catch_unwind(panic::AssertUnwindSafe(fun)).map_err(|any_err| {
-        // Extract common types of panic payload:
-        // panic and assert produce &str or String
-        if let Some(&s) = any_err.downcast_ref::<&str>() {
-            s.to_owned()
-        } else if let Some(s) = any_err.downcast_ref::<String>() {
-            s.to_owned()
-        } else {
-            "UNABLE TO SHOW RESULT OF PANIC.".to_owned()
-        }
-    })
+    #[cfg(feature = "std")]
+    {
+        use std::panic;
+        panic::catch_unwind(panic::AssertUnwindSafe(fun)).map_err(|any_err| {
+            // Extract common types of panic payload:
+            // panic and assert produce &str or String
+            if let Some(&s) = any_err.downcast_ref::<&str>() {
+                s.to_owned()
+            } else if let Some(s) = any_err.downcast_ref::<String>() {
+                s.to_owned()
+            } else {
+                "UNABLE TO SHOW RESULT OF PANIC.".to_owned()
+            }
+        })
+    }
+    // Fallback for `no_std`: execute directly without panic handling.
+    #[cfg(not(feature = "std"))]
+    {
+        Ok(fun())
+    }
 }
 
 /// A function to set some boolean fields to a default of 'true'. We use a

@@ -20,6 +20,10 @@ name = "regex_test"
 bench = false
 path = "lib.rs"
 
+[features]
+default = ["std"]
+std = []
+
 [dependencies]
 anyhow = "1.0.27"
 bstr = { version = "1.3.0", default-features = false, features = ["std", "serde"] }
