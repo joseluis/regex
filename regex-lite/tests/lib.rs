@@ -1,3 +1,5 @@
+#![cfg(feature = "string")]
+
 mod fuzz;
 mod string;
 

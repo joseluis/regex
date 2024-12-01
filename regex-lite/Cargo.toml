@@ -23,6 +23,7 @@ default = ["std", "string"]
 std = []
 string = []
 
+portable_arc = ["dep:portable-atomic-util"]
 core_error = [] # MSRV 1.81.0: support `core::error::Error`
 
 [dev-dependencies]
@@ -32,6 +33,9 @@ regex-test = { path = "../regex-test", version = "0.1.0" }
 [[test]]
 path = "tests/lib.rs"
 name = "integration"
+
+[dependencies]
+portable-atomic-util = { version = "0.2.4", optional = true, features = ["alloc"] }
 
 [package.metadata.docs.rs]
 # We want to document all features.

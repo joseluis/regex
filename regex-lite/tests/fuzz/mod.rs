@@ -39,10 +39,10 @@ fn run(data: &[u8]) -> Option<()> {
         return None;
     }
     let mut split_at = usize::from(data[0]);
-    let data = std::str::from_utf8(&data[1..]).ok()?;
+    let data = core::str::from_utf8(&data[1..]).ok()?;
     // Split data into a regex and haystack to search.
     let len = usize::try_from(data.chars().count()).ok()?;
-    split_at = std::cmp::max(split_at, 1) % len;
+    split_at = core::cmp::max(split_at, 1) % len;
     let char_index = data.char_indices().nth(split_at)?.0;
     let (pattern, input) = data.split_at(char_index);
     let re = regex_lite::Regex::new(pattern).ok()?;

@@ -1,6 +1,11 @@
 use core::{cell::RefCell, mem::size_of};
 
-use alloc::{string::String, sync::Arc, vec, vec::Vec};
+use alloc::{string::String, vec, vec::Vec};
+
+#[cfg(not(feature = "portable_arc"))]
+use alloc::sync::Arc;
+#[cfg(feature = "portable_arc")]
+use portable_atomic_util::Arc;
 
 use crate::{
     error::Error,

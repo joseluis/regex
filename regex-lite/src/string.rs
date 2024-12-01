@@ -1,7 +1,11 @@
 use alloc::{
-    borrow::Cow, boxed::Box, string::String, string::ToString, sync::Arc, vec,
-    vec::Vec,
+    borrow::Cow, boxed::Box, string::String, string::ToString, vec, vec::Vec,
 };
+
+#[cfg(not(feature = "portable_arc"))]
+use alloc::sync::Arc;
+#[cfg(feature = "portable_arc")]
+use portable_atomic_util::Arc;
 
 use crate::{
     error::Error,
